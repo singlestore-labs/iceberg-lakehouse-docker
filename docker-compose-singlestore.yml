@@ -1,0 +1,15 @@
+services:
+  singlestoredb-dev:
+    image: ghcr.io/singlestore-labs/singlestoredb-dev:8.9.10
+    container_name: singlestoredb-dev
+    networks:
+      iceberg_net:
+    environment:
+      - ROOT_PASSWORD=root
+      - SINGLESTORE_SET_GLOBAL_DEFAULT_PARTITIONS_PER_LEAF=1
+      - SINGLESTORE_SET_GLOBAL_ENABLE_ICEBERG_INGEST=1
+    volumes:
+      - ./hive/hive-truststore.p12:/tmp/hive-truststore.p12
+
+networks:
+  iceberg_net:

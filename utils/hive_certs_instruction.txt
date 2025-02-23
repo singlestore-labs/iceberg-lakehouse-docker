@@ -1,0 +1,52 @@
+Multiple errors are encountered if I try simple certs generation, so here are refined instructions.
+
+🛠 Step 1: Generate a Private Key
+openssl genrsa -out hive-key.pem 2048
+
+This creates a private key (hive-key.pem) that will be used to sign the certificate.
+
+📄 Step 2: Create a Certificate Signing Request (CSR)
+openssl req -new -key hive-key.pem -out hive.csr \
+  -subj "/CN=hive/OU=MyOrg/O=MyCompany/L=MyCity/ST=MyState/C=US"
+
+This generates a CSR (hive.csr) with Common Name (CN=hive).
+
+🏷 Step 3: Create a Self-Signed Certificate with Subject Alternative Names (SAN)
+Create a config file for SANs (hive-san.cnf):
+cat > hive-san.cnf <<EOF
+[ req ]
+distinguished_name=req
+[ v3_ext ]
+subjectAltName=DNS:hive,DNS:localhost,IP:127.0.0.1
+EOF
+
+Now, use OpenSSL to generate the certificate:
+openssl x509 -req -days 365 -in hive.csr -signkey hive-key.pem -out hive-cert.pem \
+  -extfile hive-san.cnf -extensions v3_ext
+This creates a self-signed certificate (hive-cert.pem) valid for 365 days, including SANs.
+
+🔄 Step 4: Convert the Certificate to PKCS#12 Format (for Java Keystore)
+openssl pkcs12 -export -in hive-cert.pem -inkey hive-key.pem -out hive-keystore.p12 \
+  -name hive -passout pass:changeit
+This packages the certificate and key into a PKCS#12 file (hive-keystore.p12).
+
+
+🔐 Step 5: Import the PKCS#12 File into a Java Keystore
+keytool -importkeystore -destkeystore hive-keystore.jks -srckeystore hive-keystore.p12 \
+  -srcstoretype PKCS12 -alias hive -storepass changeit -srcstorepass changeit
+
+This creates the keystore (hive-keystore.jks) containing the private key and certificate.
+
+✅ Step 6: Create a Truststore and Import the Certificate
+keytool -import -trustcacerts -alias hive -file hive-cert.pem -keystore hive-truststore.jks -storepass changeit -noprompt
+This creates a truststore (hive-truststore.jks) containing the self-signed certificate.
+
+🎯 Final Output:
+✔ hive-keystore.jks → Keystore with private key + certificate
+✔ hive-truststore.jks → Truststore containing the trusted certificate
+
+Use instructions below to convert JKS to PKCS12
+https://stackoverflow.com/questions/2846828/converting-jks-to-p12
+
+keytool -importkeystore -srckeystore hive-keystore.jks -srcstoretype JKS -deststoretype PKCS12 -destkeystore hive-keystore.p12
+keytool -importkeystore -srckeystore hive-truststore.jks -srcstoretype JKS -deststoretype PKCS12 -destkeystore hive-truststore.p12
